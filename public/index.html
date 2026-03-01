@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Setup WhatsApp + OpenAI</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #f5f7fb;
+        color: #1f2937;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 20px;
+      }
+      p {
+        margin: 8px 0;
+      }
+      ol, ul {
+        margin: 8px 0 0;
+        padding-left: 20px;
+      }
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .status-item {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 12px;
+      }
+      .ok { color: #047857; font-weight: 700; }
+      .bad { color: #b91c1c; font-weight: 700; }
+      .muted { color: #6b7280; }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: #f3f4f6;
+        border-radius: 6px;
+        padding: 2px 6px;
+      }
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        background: #2563eb;
+        color: #fff;
+        cursor: pointer;
+      }
+      button:hover { background: #1d4ed8; }
+      .footer { font-size: 13px; color: #6b7280; }
+      a { color: #1d4ed8; }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <section class="card">
+        <h1>Conectar WhatsApp + ChatGPT</h1>
+        <p>Esta pantalla te guía para dejar tu bot funcionando y validar si tu archivo <span class="mono">.env</span> está completo.</p>
+      </section>
+
+      <section class="card">
+        <h2>Estado de configuración</h2>
+        <p class="muted">No se muestran secretos, solo si cada variable está configurada.</p>
+        <div id="status" class="status-grid"></div>
+        <p style="margin-top: 12px;"><button id="refreshBtn">Actualizar estado</button></p>
+      </section>
+
+      <section class="card">
+        <h2>Paso 1: Crear API key de OpenAI</h2>
+        <ol>
+          <li>Entra a <a href="https://platform.openai.com" target="_blank" rel="noreferrer">platform.openai.com</a> e inicia sesión.</li>
+          <li>Ve a <strong>API keys</strong> en el panel de tu organización/proyecto.</li>
+          <li>Haz clic en <strong>Create new secret key</strong>.</li>
+          <li>Copia la clave una sola vez y guárdala en tu <span class="mono">.env</span> como <span class="mono">OPENAI_API_KEY=...</span>.</li>
+          <li>Opcional: define <span class="mono">OPENAI_MODEL=gpt-4o</span> y <span class="mono">OPENAI_REASONING_EFFORT=medium</span>.</li>
+        </ol>
+      </section>
+
+      <section class="card">
+        <h2>Paso 2: Configurar WhatsApp en Meta</h2>
+        <ol>
+          <li>En tu app de Meta, entra a <strong>WhatsApp &gt; Configuración de la API</strong>.</li>
+          <li>Configura el webhook con tu URL pública (ngrok) terminada en <span class="mono">/webhook</span>.</li>
+          <li>Usa el mismo valor en Meta y en <span class="mono">WHATSAPP_VERIFY_TOKEN</span>.</li>
+          <li>Suscribe el campo <span class="mono">messages</span>.</li>
+          <li>Copia <span class="mono">WHATSAPP_ACCESS_TOKEN</span> y <span class="mono">WHATSAPP_PHONE_NUMBER_ID</span> a tu <span class="mono">.env</span>.</li>
+        </ol>
+      </section>
+
+      <section class="card">
+        <h2>Paso 3: (Opcional) Persistencia con Redis</h2>
+        <ul>
+          <li>Si no configuras Redis, usa memoria RAM (se pierde al reiniciar).</li>
+          <li>Con Redis: <span class="mono">REDIS_URL=redis://localhost:6379</span>.</li>
+          <li>Controla historial con <span class="mono">MEMORY_MAX_MESSAGES=5</span>.</li>
+        </ul>
+      </section>
+
+      <section class="card footer">
+        Abre esta página en <span class="mono">http://localhost:3000</span>. Tu webhook sigue en <span class="mono">/webhook</span> y envío manual en <span class="mono">/send-text</span>.
+      </section>
+    </main>
+
+    <script>
+      const labels = {
+        WHATSAPP_VERIFY_TOKEN: 'WHATSAPP_VERIFY_TOKEN',
+        WHATSAPP_ACCESS_TOKEN: 'WHATSAPP_ACCESS_TOKEN',
+        WHATSAPP_PHONE_NUMBER_ID: 'WHATSAPP_PHONE_NUMBER_ID',
+        META_APP_SECRET: 'META_APP_SECRET (opcional recomendado)',
+        OPENAI_API_KEY: 'OPENAI_API_KEY',
+        OPENAI_MODEL: 'OPENAI_MODEL',
+        OPENAI_REASONING_EFFORT: 'OPENAI_REASONING_EFFORT',
+        REDIS_URL: 'REDIS_URL (opcional)',
+        MEMORY_MAX_MESSAGES: 'MEMORY_MAX_MESSAGES'
+      };
+
+      async function loadStatus() {
+        const container = document.getElementById('status');
+        container.innerHTML = '<p>Cargando...</p>';
+
+        try {
+          const response = await fetch('/config-status');
+          const data = await response.json();
+
+          container.innerHTML = '';
+          for (const [key, value] of Object.entries(data.env || {})) {
+            const div = document.createElement('div');
+            div.className = 'status-item';
+            div.innerHTML = `
+              <div><strong>${labels[key] || key}</strong></div>
+              <div class="${value ? 'ok' : 'bad'}">${value ? 'Configurado' : 'Falta'}</div>
+            `;
+            container.appendChild(div);
+          }
+        } catch (error) {
+          container.innerHTML = `<p class="bad">No se pudo cargar el estado: ${error.message}</p>`;
+        }
+      }
+
+      document.getElementById('refreshBtn').addEventListener('click', loadStatus);
+      loadStatus();
+    </script>
+  </body>
+</html>
