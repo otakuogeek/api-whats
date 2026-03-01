@@ -97,6 +97,8 @@ Se agregó configuración para gestionar el ciclo desde Git:
 ### Secrets requeridos (Environment `staging` y `production`)
 - `STAGING_SSH_HOST`, `STAGING_SSH_USER`, `STAGING_SSH_KEY` (solo staging)
 - `PROD_SSH_HOST`, `PROD_SSH_USER`, `PROD_SSH_KEY` (solo production)
+- `GHCR_USERNAME` (tu usuario de GitHub)
+- `GHCR_TOKEN` (PAT con permisos de `read:packages`)
 - `WHATSAPP_VERIFY_TOKEN`
 - `WHATSAPP_ACCESS_TOKEN`
 - `WHATSAPP_PHONE_NUMBER_ID`

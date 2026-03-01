@@ -28,7 +28,7 @@ jobs:
             set -e
             IMAGE="ghcr.io/${{ github.repository }}:${{ inputs.image_tag }}"
 
-            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+            docker login ghcr.io -u '${{ secrets.GHCR_USERNAME }}' -p '${{ secrets.GHCR_TOKEN }}'
             docker pull "$IMAGE"
 
             docker stop api-whats-prod || true
