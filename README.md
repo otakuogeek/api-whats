@@ -87,6 +87,35 @@ La app incluye una interfaz para revisar estado de variables sin mostrar secreto
 - `GET /` muestra el frontend de setup.
 - `GET /config-status` devuelve solo `true/false` por variable de entorno.
 
+## 11) CI/CD global desde GitHub
+Se agregó configuración para gestionar el ciclo desde Git:
+
+- Workflow CI: `.github/workflows/ci.yml`
+- Deploy automático a staging: `.github/workflows/deploy-staging.yml`
+- Deploy manual a producción (con aprobación): `.github/workflows/deploy-production.yml`
+
+### Secrets requeridos (Environment `staging` y `production`)
+- `STAGING_SSH_HOST`, `STAGING_SSH_USER`, `STAGING_SSH_KEY` (solo staging)
+- `PROD_SSH_HOST`, `PROD_SSH_USER`, `PROD_SSH_KEY` (solo production)
+- `WHATSAPP_VERIFY_TOKEN`
+- `WHATSAPP_ACCESS_TOKEN`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `META_APP_SECRET`
+- `OPENAI_API_KEY`
+- `REDIS_URL` (opcional)
+
+### Variables recomendadas (Environment vars)
+- `OPENAI_MODEL` (ej: `gpt-4o`)
+- `OPENAI_REASONING_EFFORT` (ej: `medium`)
+- `MEMORY_MAX_MESSAGES` (ej: `5`)
+
+### Flujo
+1. Push a `main` => corre CI + deploy a staging.
+2. Verifica en staging.
+3. Ejecuta `Deploy Production` manualmente indicando `image_tag`.
+
+> En GitHub, activa protección del environment `production` con aprobación obligatoria para tener promoción controlada.
+
 ## 9) Redis local (opcional)
 Si tienes Docker, puedes levantar Redis así:
 

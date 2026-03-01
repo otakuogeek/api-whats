@@ -1,0 +1,50 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Tag de imagen en GHCR (ej: sha-abc1234 o staging)"
+        required: true
+        default: "staging"
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy-to-production:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy via SSH to production server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -e
+            IMAGE="ghcr.io/${{ github.repository }}:${{ inputs.image_tag }}"
+
+            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+            docker pull "$IMAGE"
+
+            docker stop api-whats-prod || true
+            docker rm api-whats-prod || true
+
+            docker run -d \
+              --name api-whats-prod \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              -e WHATSAPP_VERIFY_TOKEN='${{ secrets.WHATSAPP_VERIFY_TOKEN }}' \
+              -e WHATSAPP_ACCESS_TOKEN='${{ secrets.WHATSAPP_ACCESS_TOKEN }}' \
+              -e WHATSAPP_PHONE_NUMBER_ID='${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}' \
+              -e META_APP_SECRET='${{ secrets.META_APP_SECRET }}' \
+              -e OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}' \
+              -e OPENAI_MODEL='${{ vars.OPENAI_MODEL }}' \
+              -e OPENAI_REASONING_EFFORT='${{ vars.OPENAI_REASONING_EFFORT }}' \
+              -e REDIS_URL='${{ secrets.REDIS_URL }}' \
+              -e MEMORY_MAX_MESSAGES='${{ vars.MEMORY_MAX_MESSAGES }}' \
+              "$IMAGE"
